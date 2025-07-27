@@ -1,25 +1,39 @@
-package com.delivery.delivery.tracking.domain.model;
+package com.delivery.delivery.tracking.domain.repository;
 
-import com.delivery.delivery.tracking.domain.exception.DomainException;
+import com.delivery.delivery.tracking.domain.model.ContactPoint;
+import com.delivery.delivery.tracking.domain.model.Delivery;
+import lombok.ToString;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
 import java.math.BigDecimal;
 import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class DeliveryTest {
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+class DeliveryRepositoryTest {
+
+    @Autowired
+    private DeliveryRepository deliveryRepository;
 
     @Test
-    public void shouldChangeToPlaced() {
-       Delivery draft = Delivery.draft();
+    public void shouldPersist() {
+        Delivery delivery = Delivery.draft();
 
-       draft.editPreparationDetails(createdValidPrepationDetails());
+        delivery.editPreparationDetails(createdValidPrepationDetails());
 
-       draft.place();
+        delivery.addItem("Computador", 2);
+        delivery.addItem("Notebook", 2);
 
-       assertEquals(DeliveryStatus.WAITING_FOR_COURIER, draft.getStatus());
-       assertNotNull(draft.getPlacedAt());
+        deliveryRepository.saveAndFlush(delivery);
+
+        Delivery persistedDelivery = deliveryRepository.findById(delivery.getId()).orElseThrow();
+
+        assertEquals(2, persistedDelivery.getItems().size());
     }
 
     private Delivery.PreparationDetails createdValidPrepationDetails() {
@@ -48,17 +62,5 @@ class DeliveryTest {
                 .courierPayout(new BigDecimal("5.00"))
                 .expectedDeliveryTime(Duration.ofHours(5))
                 .build();
-    }
-
-    @Test
-    public void shouldNotPlaced() {
-        Delivery draft = Delivery.draft();
-
-        assertThrows(DomainException.class, () -> {
-            draft.place();
-        });
-
-        assertEquals(DeliveryStatus.DRAFT, draft.getStatus());
-        assertNull(draft.getPlacedAt());
     }
 }
